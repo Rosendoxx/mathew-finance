@@ -1,65 +1,155 @@
-# backend
+# Mathew Finance — Backend
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+API REST do produto de gestão financeira pessoal **Mathew Finance**, construída com Quarkus.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## 🎯 Visão do Produto
 
-## Running the application in dev mode
+Plataforma de gestão financeira pessoal que reduz o atrito do registro de transações através de **categorização inteligente**: uma vez que um estabelecimento é categorizado pelo usuário, novas compras no mesmo local são categorizadas automaticamente.
 
-You can run your application in dev mode that enables live coding using:
+> 📄 Documento completo de requisitos: [`PRD-Gestao-Financeira.md`](./PRD-Gestao-Financeira.md)
+> 📐 Modelagem UML: [`backend.puml`](./backend.puml)
 
-```shell script
+---
+
+## 🏗️ Stack Técnica
+
+| Camada | Tecnologia |
+|---|---|
+| Runtime | Java 25 + Quarkus (RESTEasy Reactive) |
+| ORM | Hibernate ORM with Panache |
+| Banco de dados | PostgreSQL (com extensão `pg_trgm`) |
+| Autenticação | JWT (SmallRye JWT) — sessão stateless |
+| Validação | Hibernate Validator (Jakarta Validation) |
+| Documentação | SmallRye OpenAPI + Swagger UI |
+
+---
+
+## 📦 Funcionalidades (MVP)
+
+| # | Funcionalidade | Prioridade |
+|---|---|---|
+| F1 | Cadastro e login de usuário (e-mail/senha) | P0 |
+| F2 | CRUD de lançamentos (gasto/entrada) | P0 |
+| F3 | Cadastro e gestão de categorias (padrão + customizadas) | P0 |
+| F4 | Categorização automática por estabelecimento recorrente | P0 |
+| F5 | Listagem de lançamentos com filtros (período, categoria, tipo) | P0 |
+| F6 | Dashboard resumo (entradas, saídas, saldo, gastos por categoria) | P1 |
+| F7 | Edição de categoria de estabelecimento (com recategorização retroativa) | P1 |
+| F8 | Exportação de lançamentos (CSV) | P2 |
+
+---
+
+## 📊 Modelo de Dados
+
+```
+users                   categories              transactions
+├─ id (UUID, PK)        ├─ id (UUID, PK)        ├─ id (UUID, PK)
+├─ name                 ├─ user_id (FK, null)   ├─ user_id (FK)
+├─ email (UNIQUE)       ├─ name                 ├─ type (GASTO/ENTRADA)
+├─ password_hash        ├─ type (ENUM)          ├─ amount (DECIMAL)
+└─ created_at           ├─ color                ├─ description
+                        └─ created_at           ├─ transaction_date
+                                                ├─ category_id (FK)
+merchant_mappings                               ├─ merchant_mapping_id (FK, null)
+├─ id (UUID, PK)                                ├─ notes
+├─ user_id (FK)                                 └─ created_at
+├─ normalized_merchant_name
+├─ category_id (FK)
+├─ created_at
+└─ updated_at
+```
+
+**Índice chave:** `merchant_mappings (user_id, normalized_merchant_name)` — único composto.
+
+---
+
+## 🧠 Regra de Negócio Central — Categorização Automática
+
+1. Usuário informa o estabelecimento (ex: `"Supermercado Pague Menos"`).
+2. Sistema **normaliza** o texto (lowercase, remove acentos/pontuação).
+3. Busca no `merchant_mappings` do usuário:
+   - **Match exato** no nome normalizado.
+   - **Match por similaridade** (`pg_trgm`, limiar ≥ 85%) para variações como `"Pague Menos Norte"` vs `"Pague Menos - Filial Norte"`.
+4. Se encontrar, a categoria é **sugerida automaticamente**.
+5. Se o usuário corrigir a categoria, o sistema **reaprende** — atualiza o mapeamento.
+
+---
+
+## 🚀 Rodando o projeto
+
+### Pré-requisitos
+
+- Java 25+
+- PostgreSQL (com extensão `pg_trgm` habilitada)
+- Maven Wrapper (`./mvnw`)
+
+### Configuração do banco
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+```
+
+Configure a conexão em [`application.properties`](./src/main/resources/application.properties):
+
+```properties
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/mathewfinance
+quarkus.datasource.username=seu_usuario
+quarkus.datasource.password=sua_senha
+quarkus.hibernate-orm.database.generation=drop-and-create
+```
+
+### Dev mode
+
+```shell
 ./mvnw quarkus:dev
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+- API: <http://localhost:8080>
+- Swagger UI: <http://localhost:8080/q/swagger-ui/>
+- Dev UI: <http://localhost:8080/q/dev/>
 
-## Packaging and running the application
+### Build
 
-The application can be packaged using:
-
-```shell script
+```shell
 ./mvnw package
 ```
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+O JAR gerado fica em `target/quarkus-app/quarkus-run.jar`.
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+### Native (GraalVM)
 
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
+```shell
 ./mvnw package -Dnative
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
+---
 
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
+## 🔐 Segurança
+
+- Senhas hasheadas com **Argon2ID**.
+- Autenticação via **JWT** com expiração configurável.
+- **HTTPS obrigatório** em produção.
+- **Isolamento total** por `user_id` — todas as queries filtram pelo usuário autenticado.
+
+## 📁 Estrutura do Projeto
+
+```
+src/main/java/br/com/mathewfinance/
+├── model/          # Entidades JPA/Hibernate (User, Transaction, Category, MerchantMapping)
+├── dto/            # Data Transfer Objects (requests e responses da API)
+├── mapper/         # Conversores Entity ↔ DTO
+├── repository/     # Repositórios Panache
+├── resource/       # Controllers REST (JAX-RS)
+└── service/        # Lógica de negócio (categorização automática, dashboard, etc.)
 ```
 
-You can then execute your native executable with: `./target/backend-1.0.0-SNAPSHOT-runner`
+---
 
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
+## 📖 Guias Relacionados
 
-## Related Guides
-
-- REST ([guide](https://quarkus.io/guides/rest)): Build RESTful web services and APIs using Jakarta REST (formerly JAX-RS)
-- Hibernate Validator ([guide](https://quarkus.io/guides/validation)): Bean validation using Hibernate Validator and Jakarta Validation annotations
-- SmallRye OpenAPI ([guide](https://quarkus.io/guides/openapi-swaggerui)): Generate OpenAPI schemas and serve Swagger UI for REST API documentation
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-- Hibernate ORM with Panache ([guide](https://quarkus.io/guides/hibernate-orm-panache)): Simplified JPA/Hibernate data access layer with active record and repository patterns
-- SmallRye JWT ([guide](https://quarkus.io/guides/security-jwt)): Secure your applications with JSON Web Token
-- SmallRye JWT Build ([guide](https://quarkus.io/guides/security-jwt-build)): Create JSON Web Token with SmallRye JWT Build API
-- JDBC Driver - PostgreSQL ([guide](https://quarkus.io/guides/datasource)): Connect to the PostgreSQL database via JDBC
+- [REST](https://quarkus.io/guides/rest) — Jakarta REST (JAX-RS)
+- [Hibernate ORM with Panache](https://quarkus.io/guides/hibernate-orm-panache) — Camada de acesso a dados
+- [SmallRye JWT](https://quarkus.io/guides/security-jwt) — Autenticação JWT
+- [Hibernate Validator](https://quarkus.io/guides/validation) — Bean Validation
+- [OpenAPI & Swagger UI](https://quarkus.io/guides/openapi-swaggerui) — Documentação da API

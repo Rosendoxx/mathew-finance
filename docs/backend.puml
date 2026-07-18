@@ -1,0 +1,79 @@
+@startuml backend
+
+' ============================================================
+' Modelagem MVC — Mathew Finance (Quarkus + Hibernate Panache)
+' Baseado no PRD v1.0 — Gestão Financeira Pessoal
+' ============================================================
+
+' ——— Enums —————————————————————
+
+enum TransactionType {
+    GASTO
+    ENTRADA
+}
+
+enum CategoryType {
+    GASTO
+    ENTRADA
+    AMBOS
+}
+
+' ——— Entidades (Model) ———————————————————
+
+class User <<Entity>> {
+    + UUID id <<PK>>
+    + String name
+    + String email <<UNIQUE>>
+    + String passwordHash
+    + LocalDateTime createdAt
+    + LocalDateTime updatedAt
+}
+
+class Category <<Entity>> {
+    + UUID id <<PK>>
+    + UUID userId <<FK nullable>>
+    + String name
+    + CategoryType type
+    + String color
+    + LocalDateTime createdAt
+    + LocalDateTime updatedAt
+}
+
+class Transaction <<Entity>> {
+    + UUID id <<PK>>
+    + UUID userId <<FK>>
+    + TransactionType type
+    + BigDecimal amount
+    + String description
+    + LocalDate transactionDate
+    + String notes
+    + UUID categoryId <<FK>>
+    + UUID merchantMappingId <<FK nullable>>
+    + LocalDateTime createdAt
+}
+
+class MerchantMapping <<Entity>> {
+    + UUID id <<PK>>
+    + UUID userId <<FK>>
+    + String normalizedMerchantName <<INDEXED>>
+    + UUID categoryId <<FK>>
+    + LocalDateTime createdAt
+    + LocalDateTime updatedAt
+}
+
+
+' ——— Relacionamentos ————————————————
+
+' Entidades
+User "1" -- "0..*" Category : owns >
+User "1" -- "0..*" Transaction : owns >
+User "1" -- "0..*" MerchantMapping : owns >
+Category "1" -- "0..*" Transaction : categorizes >
+Category "1" -- "0..*" MerchantMapping : maps to >
+MerchantMapping "0..1" -- "0..*" Transaction : references >
+
+' Enums
+Transaction ..> TransactionType
+Category ..> CategoryType
+
+@enduml
