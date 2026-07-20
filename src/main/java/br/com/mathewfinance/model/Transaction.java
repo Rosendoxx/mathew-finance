@@ -5,21 +5,32 @@ import java.time.LocalDate;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 @Entity
+@Table(name = "tb_transaction")
 public class Transaction extends DefaultEntity {
     
     private BigDecimal amount;
 
     private String description;
 
+    @Enumerated(EnumType.STRING)
     private TransactionType type;
 
+    @ManyToOne
+    @JoinColumn(name = "category_id")
     private Category category;
 
     @Column(name = "transaction_date")
     private LocalDate transactionDate;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id")
     private User user;
 
     public BigDecimal getAmount() {

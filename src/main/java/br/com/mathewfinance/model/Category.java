@@ -1,16 +1,25 @@
 package br.com.mathewfinance.model;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 @Entity
+@Table(name = "tb_category")
 public class Category extends DefaultEntity {
 
     private String name;
 
     private String color;
 
+    @Enumerated(EnumType.STRING)
     private CategoryType type;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id")
     private User user;
 
     public String getName() {

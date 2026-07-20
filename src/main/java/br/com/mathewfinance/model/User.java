@@ -2,8 +2,10 @@ package br.com.mathewfinance.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 
 @Entity
+@Table(name = "tb_user")
 public class User extends DefaultEntity {
     
     private String name;
@@ -14,7 +16,17 @@ public class User extends DefaultEntity {
     @Column(name = "password_hash")
     private String passwordHash;
 
-    public String getName() {
+    private SystemRole role;
+
+    public SystemRole getRole() {
+		return role;
+	}
+
+	public void setRole(SystemRole role) {
+		this.role = role;
+	}
+
+	public String getName() {
         return name;
     }
 
